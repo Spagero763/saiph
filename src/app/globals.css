@@ -1,26 +1,156 @@
 @import "tailwindcss";
 
+/*
+  Saiph design language
+  Two worlds, one instrument:
+  - "paper"    : warm editorial light. the narrative, the argument, the story.
+  - "instrument": deep graphite console. where the engine runs and proves.
+  A single signal hue (solar) marks the brand. Verdict states (breach/clear/watch)
+  carry meaning, never decoration.
+*/
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* paper world */
+  --paper: #f4f1ea;
+  --paper-raised: #fbf9f4;
+  --ink: #16130d;
+  --ink-soft: #4b463c;
+  --ink-faint: #857e70;
+  --hairline: #dcd6c8;
+
+  /* instrument world */
+  --graphite: #0c0b0d;
+  --graphite-raised: #141216;
+  --graphite-line: #2a2730;
+  --graphite-text: #e9e5df;
+  --graphite-faint: #8a8494;
+
+  /* signal + verdict */
+  --solar: #e8a13a;
+  --solar-deep: #c67f1c;
+  --breach: #e5484d;
+  --clear: #3dd68c;
+  --watch: #e8a13a;
+
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-paper: var(--paper);
+  --color-paper-raised: var(--paper-raised);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-hairline: var(--hairline);
+
+  --color-graphite: var(--graphite);
+  --color-graphite-raised: var(--graphite-raised);
+  --color-graphite-line: var(--graphite-line);
+  --color-graphite-text: var(--graphite-text);
+  --color-graphite-faint: var(--graphite-faint);
+
+  --color-solar: var(--solar);
+  --color-solar-deep: var(--solar-deep);
+  --color-breach: var(--breach);
+  --color-clear: var(--clear);
+  --color-watch: var(--watch);
+
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--hairline);
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-feature-settings: "ss01", "cv01";
+}
+
+::selection {
+  background: var(--solar);
+  color: var(--ink);
+}
+
+/* utilities */
+.font-display {
+  font-family: var(--font-display), serif;
+}
+.font-mono {
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+
+/* every metric aligns column-to-column and never jitters width as it animates */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* paper grain: coarse tooth, like pressed stock the argument is printed on */
+.grain {
+  position: relative;
+}
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* console grain: fine sensor noise, tighter and dimmer than paper.
+   the instrument world is glass and signal, not fibre. */
+.grain-console {
+  position: relative;
+}
+.grain-console::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.06;
+  mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)'/%3E%3C/svg%3E");
+}
+
+/* thin scrollbar inside the console */
+.console-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.console-scroll::-webkit-scrollbar-thumb {
+  background: var(--graphite-line);
+  border-radius: 999px;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.caret {
+  animation: blink 1.1s step-end infinite;
+}
+
+@keyframes scan-sweep {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(1100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
 }
