@@ -15,9 +15,11 @@ const DOT: Record<Verdict, string> = {
 export function Findings({
   findings,
   onRevoke,
+  revoking,
 }: {
   findings: ApprovalFinding[];
   onRevoke: (f: ApprovalFinding) => void;
+  revoking?: string | null;
 }) {
   if (findings.length === 0) {
     return (
@@ -74,13 +76,19 @@ export function Findings({
               {compactAmount(formatUnits(f.reachableRaw, f.token.decimals))} {f.token.symbol}
             </div>
           </div>
-          <button
-            onClick={() => onRevoke(f)}
-            disabled={f.severity === "clear"}
-            className="rounded-md border border-graphite-line px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-graphite-text transition-colors hover:border-breach hover:text-breach disabled:cursor-not-allowed disabled:opacity-30"
-          >
-            Revoke
-          </button>
+          {f.revoked ? (
+            <span className="rounded-md border border-clear/40 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-clear">
+              Cleared
+            </span>
+          ) : (
+            <button
+              onClick={() => onRevoke(f)}
+              disabled={f.severity === "clear" || revoking === `${f.token.address}-${f.spender.address}`}
+              className="rounded-md border border-graphite-line px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-graphite-text transition-colors hover:border-breach hover:text-breach disabled:cursor-not-allowed disabled:opacity-30"
+            >
+              {revoking === `${f.token.address}-${f.spender.address}` ? "Revoking…" : "Revoke"}
+            </button>
+          )}
         </motion.div>
       ))}
     </div>

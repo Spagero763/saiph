@@ -21,6 +21,27 @@ export function useScan() {
     setError(null);
   }, []);
 
+  // After a revoke is re-proven on-chain, flip that approval to a cleared state
+  // and drop its value from the reachable total. The engine already proved the
+  // drain is gone; this reflects it without re-running the whole scan.
+  const markCleared = useCallback((token: string, spender: string) => {
+    setResult((prev) => {
+      if (!prev) return prev;
+      let removed = 0;
+      const approvals = prev.approvals.map((f) => {
+        if (
+          f.token.address.toLowerCase() === token.toLowerCase() &&
+          f.spender.address.toLowerCase() === spender.toLowerCase()
+        ) {
+          removed += f.reachableUsd ?? 0;
+          return { ...f, reachableRaw: 0n, reachableUsd: 0, unlimited: false, drainProven: false, severity: "clear" as const, revoked: true };
+        }
+        return f;
+      });
+      return { ...prev, approvals, totalReachableUsd: Math.max(0, prev.totalReachableUsd - removed) };
+    });
+  }, []);
+
   const run = useCallback(async (address: string) => {
     abortRef.current?.abort();
     const ac = new AbortController();
@@ -84,7 +105,7 @@ export function useScan() {
     }
   }, []);
 
-  return { state, steps, result, error, run, reset };
+  return { state, steps, result, error, run, reset, markCleared };
 }
 
 // raw token amounts crossed the wire as decimal strings; turn the ones the UI

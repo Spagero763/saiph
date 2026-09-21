@@ -38,6 +38,8 @@ export interface ApprovalFinding {
   approvalTxHash: Hex | null;
   approvedAt: number | null;
   severity: Verdict;
+  /** set once the owner revokes and the cleared state is re-proven on-chain */
+  revoked?: boolean;
 }
 
 export interface ScanResult {

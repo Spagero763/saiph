@@ -19,10 +19,12 @@ const DEMO = [
 const BASE_HEX = "0x2105";
 
 export function Scanner() {
-  const { state, steps, result, error, run, reset } = useScan();
+  const { state, steps, result, error, run, reset, markCleared } = useScan();
   const [value, setValue] = useState("");
+  const [scanned, setScanned] = useState("");
   const [invalid, setInvalid] = useState(false);
   const [revokeMsg, setRevokeMsg] = useState<string | null>(null);
+  const [revoking, setRevoking] = useState<string | null>(null);
 
   const submit = (addr?: string) => {
     const target = (addr ?? value).trim();
@@ -33,6 +35,7 @@ export function Scanner() {
     setInvalid(false);
     setRevokeMsg(null);
     if (addr) setValue(addr);
+    setScanned(target);
     run(target);
   };
 
@@ -43,26 +46,48 @@ export function Scanner() {
       args: [f.spender.address, 0n],
     });
     const eth = (globalThis as unknown as { ethereum?: EthereumProvider }).ethereum;
-    if (eth?.request) {
-      try {
-        const chainId = (await eth.request({ method: "eth_chainId" })) as string;
-        if (chainId !== BASE_HEX) {
-          await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: BASE_HEX }] });
-        }
-        const [from] = (await eth.request({ method: "eth_requestAccounts" })) as string[];
-        await eth.request({
-          method: "eth_sendTransaction",
-          params: [{ from, to: f.token.address, data }],
-        });
-        setRevokeMsg(`Revoke sent for ${f.token.symbol}. Re-scan to confirm.`);
-      } catch {
-        setRevokeMsg("Revoke cancelled or failed in wallet.");
-      }
-    } else {
+    if (!eth?.request) {
       await navigator.clipboard?.writeText(
         JSON.stringify({ to: f.token.address, data }, null, 2),
       );
       setRevokeMsg(`No wallet detected. Revoke calldata for ${f.token.symbol} copied to clipboard.`);
+      return;
+    }
+
+    const key = `${f.token.address}-${f.spender.address}`;
+    setRevoking(key);
+    try {
+      const chainId = (await eth.request({ method: "eth_chainId" })) as string;
+      if (chainId !== BASE_HEX) {
+        await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: BASE_HEX }] });
+      }
+      const [from] = (await eth.request({ method: "eth_requestAccounts" })) as string[];
+      const txHash = (await eth.request({
+        method: "eth_sendTransaction",
+        params: [{ from, to: f.token.address, data }],
+      })) as string;
+
+      setRevokeMsg(`Revoke sent for ${f.token.symbol}. Waiting for the chain to confirm…`);
+      await waitForReceipt(eth, txHash);
+
+      // close the loop: re-prove the drain is gone with the same call that found it
+      const res = await fetch("/api/recheck", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ owner: scanned, token: f.token.address, spender: f.spender.address }),
+      });
+      const check = await res.json().catch(() => null);
+      if (res.ok && check && !check.stillReachable) {
+        markCleared(f.token.address, f.spender.address);
+        setRevokeMsg(`Revoked. ${f.token.symbol} is no longer reachable, re-proven on-chain at block ${Number(check.blockNumber).toLocaleString()}.`);
+      } else {
+        setRevokeMsg(`Revoke mined for ${f.token.symbol}, but the chain still reports it reachable. Re-scan to confirm.`);
+      }
+    } catch (e) {
+      const msg = (e as Error)?.message ?? "";
+      setRevokeMsg(/reject|denied/i.test(msg) ? "Revoke cancelled in wallet." : "Revoke failed. Try again.");
+    } finally {
+      setRevoking(null);
     }
   };
 
@@ -174,7 +199,7 @@ export function Scanner() {
                       {revokeMsg}
                     </div>
                   )}
-                  <Findings findings={result.approvals} onRevoke={revoke} />
+                  <Findings findings={result.approvals} onRevoke={revoke} revoking={revoking} />
                   <div className="mt-4 flex items-center justify-between">
                     <p className="font-mono text-[11px] text-graphite-faint">
                       block {result.blockNumber} · every figure traces to an on-chain call · not an audit, not financial advice
@@ -201,4 +226,13 @@ export function Scanner() {
 
 interface EthereumProvider {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+}
+
+async function waitForReceipt(eth: EthereumProvider, txHash: string, tries = 40) {
+  for (let i = 0; i < tries; i++) {
+    const r = await eth.request({ method: "eth_getTransactionReceipt", params: [txHash] });
+    if (r) return r;
+    await new Promise((res) => setTimeout(res, 1500));
+  }
+  throw new Error("receipt timeout");
 }
