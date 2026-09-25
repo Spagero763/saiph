@@ -43,25 +43,6 @@ findings, never a raw address, so it can never point a drain proof at someone el
 If no model key is present the scan is fully deterministic and the diagnosis is
 written by the engine. The verdict is identical either way.
 
-## Running it
-
-```bash
-pnpm install
-pnpm dev
-```
-
-Open http://localhost:3000.
-
-Configuration is optional and lives only on the server. Copy `.env.example` to
-`.env.local`:
-
-- `OPENAI_API_KEY` or `GROQ_API_KEY` turns on the analyst agent. Without either,
-  the engine writes the diagnosis.
-- `ETHERSCAN_API_KEY` (one V2 key covers every chain) gives approval-history reads
-  a higher rate budget. Without it, discovery falls back to a keyless indexer.
-- `BASESCAN_API_KEY` adds source-verification lookups when profiling spenders.
-- `BASE_RPC_URL` points contract reads and drain proofs at a private RPC.
-
 ## Stack
 
 Next.js, viem, and a Server-Sent Events stream so the investigation is watched as
